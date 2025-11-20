@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Conquerix - Domine Sua Cidade",
-  description: "Transforme exercício em conquista territorial. Corra, conquiste e domine sua cidade.",
+  title: "Domin8 - Domine Sua Cidade",
+  description: "Transforme exercício em conquista territorial. Corra, conquiste e domine sua cidade. Seu território, suas regras.",
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
         <Script src="/lasy-bridge.js" strategy="beforeInteractive" />
       </head>
       <body
-        className={`${inter.variable} font-sans antialiased bg-[#0A0A0A] text-white`}
+        className={`${inter.variable} font-sans antialiased bg-[#0D0D0D] text-white`}
       >
         {children}
       </body>

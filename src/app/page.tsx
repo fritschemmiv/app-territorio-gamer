@@ -1,253 +1,146 @@
 'use client';
 
-import { useState } from 'react';
-import MapView from '@/components/custom/map-view';
-import UserProfile from '@/components/custom/user-profile';
-import { Play, User, Trophy, Map, Target } from 'lucide-react';
-import type { Territory, User as UserType, Mission, Stats } from '@/lib/types';
-import { generateDailyMissions } from '@/lib/game-logic';
+import { useState, useEffect } from 'react';
+import { Map, Trophy, User, Search } from 'lucide-react';
+import { searchPlaces, PlaceSuggestion } from '@/lib/places-api';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'map' | 'profile'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'ranking' | 'profile'>('map');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Dados simulados (em produção, viriam do Supabase)
-  const currentUser: UserType = {
-    id: 'user-1',
-    username: 'Conquistador',
-    level: 12,
-    xp: 14800,
-    total_distance: 127.5,
-    total_activities: 42,
-    territories_count: 18,
-    premium: false,
-    streak_days: 7,
-    created_at: new Date().toISOString()
-  };
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.trim().length > 2) {
+        setIsSearching(true);
+        try {
+          const response = await searchPlaces(searchQuery);
+          setSuggestions(response.suggestions || []);
+        } catch (error) {
+          console.error('Erro ao buscar lugares:', error);
+          setSuggestions([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSuggestions([]);
+      }
+    }, 500);
 
-  const stats: Stats = {
-    total_distance: 127.5,
-    total_time: 36000,
-    total_calories: 8500,
-    avg_speed: 9.5,
-    total_activities: 42,
-    territories_owned: 18,
-    current_level: 12,
-    current_xp: 14800,
-    xp_for_next_level: 14400,
-    streak_days: 7
-  };
-
-  const missions: Mission[] = generateDailyMissions().map((m, i) => ({
-    id: `mission-${i}`,
-    type: 'daily' as const,
-    title: m.title,
-    description: m.description,
-    target_value: m.target_value,
-    current_progress: i === 0 ? m.target_value : Math.floor(m.target_value * 0.6),
-    xp_reward: m.xp_reward,
-    completed: i === 0,
-    icon: m.icon
-  }));
-
-  const territories: Territory[] = [
-    {
-      id: 'territory-1',
-      owner_id: 'user-1',
-      owner_username: 'Conquistador',
-      area: [],
-      center_point: [-23.5505, -46.6333],
-      size_km2: 0.45,
-      conquered_at: new Date().toISOString(),
-      conquest_count: 3,
-      is_protected: true
-    },
-    {
-      id: 'territory-2',
-      owner_id: 'user-1',
-      owner_username: 'Conquistador',
-      area: [],
-      center_point: [-23.5515, -46.6343],
-      size_km2: 0.32,
-      conquered_at: new Date(Date.now() - 86400000).toISOString(),
-      conquest_count: 1,
-      is_protected: false
-    },
-    {
-      id: 'territory-3',
-      owner_id: 'user-2',
-      owner_username: 'João',
-      area: [],
-      center_point: [-23.5525, -46.6353],
-      size_km2: 0.28,
-      conquered_at: new Date(Date.now() - 172800000).toISOString(),
-      conquest_count: 2,
-      is_protected: false
-    },
-    {
-      id: 'territory-4',
-      owner_id: 'user-1',
-      owner_username: 'Conquistador',
-      area: [],
-      center_point: [-23.5495, -46.6323],
-      size_km2: 0.51,
-      conquered_at: new Date(Date.now() - 259200000).toISOString(),
-      conquest_count: 4,
-      is_protected: false
-    },
-    {
-      id: 'territory-5',
-      owner_id: 'user-3',
-      owner_username: 'Maria',
-      area: [],
-      center_point: [-23.5535, -46.6363],
-      size_km2: 0.38,
-      conquered_at: new Date(Date.now() - 345600000).toISOString(),
-      conquest_count: 1,
-      is_protected: false
-    },
-    {
-      id: 'territory-6',
-      owner_id: 'user-4',
-      owner_username: 'Pedro',
-      area: [],
-      center_point: [-23.5485, -46.6313],
-      size_km2: 0.42,
-      conquered_at: new Date(Date.now() - 432000000).toISOString(),
-      conquest_count: 3,
-      is_protected: false
-    },
-    {
-      id: 'territory-7',
-      owner_id: 'user-1',
-      owner_username: 'Conquistador',
-      area: [],
-      center_point: [-23.5545, -46.6373],
-      size_km2: 0.29,
-      conquered_at: new Date(Date.now() - 518400000).toISOString(),
-      conquest_count: 2,
-      is_protected: false
-    },
-    {
-      id: 'territory-8',
-      owner_id: 'user-5',
-      owner_username: 'Ana',
-      area: [],
-      center_point: [-23.5475, -46.6303],
-      size_km2: 0.36,
-      conquered_at: new Date(Date.now() - 604800000).toISOString(),
-      conquest_count: 1,
-      is_protected: false
-    },
-    {
-      id: 'territory-9',
-      owner_id: 'user-1',
-      owner_username: 'Conquistador',
-      area: [],
-      center_point: [-23.5555, -46.6383],
-      size_km2: 0.47,
-      conquered_at: new Date(Date.now() - 691200000).toISOString(),
-      conquest_count: 5,
-      is_protected: false
-    }
-  ];
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   return (
-    <div className="flex flex-col h-screen bg-[#0A0A0A]">
-      {/* Header */}
-      <header className="bg-[#1A1A1A] border-b border-gray-800 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF6B00] to-[#CC5500] flex items-center justify-center">
-              <Map className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-white text-xl font-bold">Conquerix</h1>
-              <p className="text-gray-400 text-xs">Domine sua cidade</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto p-4">
+        <header className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Conquista de Territórios</h1>
+          <p className="text-gray-600">Explore, conquiste e domine o mapa!</p>
+        </header>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 bg-[#0A0A0A] rounded-lg px-3 py-2">
-              <Trophy className="w-4 h-4 text-[#FF6B00]" />
-              <span className="text-white text-sm font-medium">
-                Nível {currentUser.level}
-              </span>
-            </div>
-            <button className="bg-[#FF6B00] hover:bg-[#CC5500] text-white font-bold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
-              <Play className="w-4 h-4" />
-              <span className="hidden sm:inline">Iniciar Corrida</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Conteúdo Principal */}
-      <main className="flex-1 overflow-hidden">
-        {activeTab === 'map' ? (
-          <MapView
-            territories={territories}
-            currentUserId={currentUser.id}
-            onTerritoryClick={(territory) => {
-              console.log('Território clicado:', territory);
-            }}
-          />
-        ) : (
-          <div className="h-full overflow-y-auto">
-            <UserProfile
-              user={currentUser}
-              stats={stats}
-              missions={missions}
-            />
-          </div>
-        )}
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className="bg-[#1A1A1A] border-t border-gray-800 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-around">
+        <nav className="bg-white rounded-lg shadow-md p-2 mb-6 flex gap-2">
           <button
             onClick={() => setActiveTab('map')}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              activeTab === 'map' ? 'text-[#FF6B00]' : 'text-gray-400 hover:text-white'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all ${
+              activeTab === 'map'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <Map className="w-6 h-6" />
-            <span className="text-xs font-medium">Mapa</span>
+            <Map className="h-5 w-5" />
+            <span className="font-medium">Mapa</span>
           </button>
-
-          <button className="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition-colors">
-            <Target className="w-6 h-6" />
-            <span className="text-xs font-medium">Atividade</span>
+          <button
+            onClick={() => setActiveTab('ranking')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all ${
+              activeTab === 'ranking'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            <Trophy className="h-5 w-5" />
+            <span className="font-medium">Ranking</span>
           </button>
-
-          <button className="flex flex-col items-center gap-1 text-gray-400 hover:text-white transition-colors">
-            <Trophy className="w-6 h-6" />
-            <span className="text-xs font-medium">Ranking</span>
-          </button>
-
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center gap-1 transition-colors ${
-              activeTab === 'profile' ? 'text-[#FF6B00]' : 'text-gray-400 hover:text-white'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all ${
+              activeTab === 'profile'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <User className="w-6 h-6" />
-            <span className="text-xs font-medium">Perfil</span>
+            <User className="h-5 w-5" />
+            <span className="font-medium">Perfil</span>
           </button>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Notificação Épica (exemplo) */}
-      <div className="fixed top-20 right-4 bg-gradient-to-r from-[#FF6B00] to-[#CC5500] rounded-xl p-4 shadow-2xl max-w-sm animate-in slide-in-from-right duration-500 hidden sm:block">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">🔥</span>
-          <div>
-            <h4 className="text-white font-bold">Território Conquistado!</h4>
-            <p className="text-white/90 text-sm">
-              Você dominou a Avenida Paulista. +150 XP
-            </p>
-          </div>
-        </div>
+        <main className="bg-white rounded-lg shadow-md p-6">
+          {activeTab === 'map' && (
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar lugares (ex: Restaurant)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="mt-2 max-h-40 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="p-2 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => setSearchQuery(suggestion.queryPrediction.text.text)}
+                      >
+                        <div className="font-medium text-gray-900">
+                          {suggestion.queryPrediction.structuredFormat.mainText.text}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {suggestion.queryPrediction.text.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm h-96">
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <Map className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                    <p>Mapa interativo em desenvolvimento</p>
+                    <p className="text-sm">Aqui você verá seus territórios conquistados</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ranking' && (
+            <div className="text-center py-12">
+              <Trophy className="h-16 w-16 mx-auto mb-4 text-yellow-500" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Ranking</h2>
+              <p className="text-gray-600">Veja os maiores conquistadores!</p>
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="text-center py-12">
+              <User className="h-16 w-16 mx-auto mb-4 text-blue-500" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Perfil</h2>
+              <p className="text-gray-600">Suas conquistas e estatísticas</p>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
