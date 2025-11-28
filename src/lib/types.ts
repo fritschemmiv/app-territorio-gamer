@@ -12,6 +12,17 @@ export interface User {
   updated_at?: string;
 }
 
+export interface UserProfile {
+  full_name: string;
+  age: number;
+  gender: string;
+  location: string;
+  interests: string[];
+  favorite_sports: string[];
+  experience_level: string;
+  goals: string;
+}
+
 export interface Territory {
   id: string;
   owner_id: string;

@@ -1,14 +1,59 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Map, Trophy, User, Search } from 'lucide-react';
+import { Map, Trophy, User, Search, LogOut } from 'lucide-react';
 import { searchPlaces, PlaceSuggestion } from '@/lib/places-api';
+import { supabase } from '@/lib/supabase';
+import { User as UserType, UserProfile } from '@/lib/types';
+import Auth from '@/components/Auth';
+import UserQuiz from '@/components/UserQuiz';
+
+type AppState = 'auth' | 'quiz' | 'app';
 
 export default function Home() {
+  const [appState, setAppState] = useState<AppState>('auth');
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'ranking' | 'profile'>('map');
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Verificar se usuário já está logado ao carregar a página
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // Buscar dados do usuário
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (userData) {
+          setCurrentUser(userData);
+
+          // Verificar se já fez o quiz
+          const { data: profileData } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profileData) {
+            setUserProfile(profileData);
+            setAppState('app');
+          } else {
+            setAppState('quiz');
+          }
+        }
+      }
+    };
+
+    checkUser();
+  }, []);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -31,12 +76,54 @@ export default function Home() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+  const handleLogin = (user: UserType) => {
+    setCurrentUser(user);
+    setAppState('quiz');
+  };
+
+  const handleQuizComplete = (profile: UserProfile) => {
+    setUserProfile(profile);
+    setAppState('app');
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setUserProfile(null);
+    setAppState('auth');
+  };
+
+  if (appState === 'auth') {
+    return <Auth onLogin={handleLogin} />;
+  }
+
+  if (appState === 'quiz' && currentUser) {
+    return <UserQuiz user={currentUser} onComplete={handleQuizComplete} />;
+  }
+
+  // App principal
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-7xl mx-auto p-4">
         <header className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Conquista de Territórios</h1>
-          <p className="text-gray-600">Explore, conquiste e domine o mapa!</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">Conquista de Territórios</h1>
+              <p className="text-gray-600">Explore, conquiste e domine o mapa!</p>
+              {userProfile && (
+                <p className="text-sm text-blue-600 mt-1">
+                  Bem-vindo, {userProfile.full_name}!
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </button>
+          </div>
         </header>
 
         <nav className="bg-white rounded-lg shadow-md p-2 mb-6 flex gap-2">
@@ -133,11 +220,55 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === 'profile' && (
-            <div className="text-center py-12">
-              <User className="h-16 w-16 mx-auto mb-4 text-blue-500" />
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Perfil</h2>
-              <p className="text-gray-600">Suas conquistas e estatísticas</p>
+          {activeTab === 'profile' && userProfile && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Seu Perfil</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">Informações Pessoais</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Nome:</span> {userProfile.full_name}</p>
+                    <p><span className="font-medium">Idade:</span> {userProfile.age} anos</p>
+                    <p><span className="font-medium">Gênero:</span> {userProfile.gender}</p>
+                    <p><span className="font-medium">Localização:</span> {userProfile.location}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">Atividades</h3>
+                  <div className="space-y-2 text-sm">
+                    <p><span className="font-medium">Nível:</span> {userProfile.experience_level}</p>
+                    <p><span className="font-medium">Objetivo:</span> {userProfile.goals}</p>
+                  </div>
+                </div>
+
+                {userProfile.interests.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2">Interesses</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {userProfile.interests.map((interest, index) => (
+                        <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {userProfile.favorite_sports.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2">Esportes Favoritos</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {userProfile.favorite_sports.map((sport, index) => (
+                        <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                          {sport}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
